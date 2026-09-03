@@ -7,8 +7,8 @@ TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# بەکارهێنانی مۆدێلی نوێتر
-model = genai.GenerativeModel("gemini-2.5-flash")
+# نوێکردنەوەی ناوی مۆدێل بۆ ئەوەی لەگەڵ داواکارییەکەی سیستەم بگونجێت
+model = genai.GenerativeModel("gemini-3.6-flash")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
