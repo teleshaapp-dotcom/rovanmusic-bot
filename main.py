@@ -7,12 +7,7 @@ TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# بەکارهێنانی مۆدێلی بنەڕەتی کە لەسەر هەموو کلیلەکان کار دەکات
-try:
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
-except:
-    model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("gemini-pro")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
@@ -31,7 +26,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ٢. سڕینەوەی لینک کاتێک کەسێک دەنێرێت لە گروپدا
     if message.chat.type in ["group", "supergroup"]:
-        # پشکنین بۆ ئەگەر لینک لە نامەکەدا هەبێت (http, https, t.me, www)
         if message.text and ("http://" in message.text or "https://" in message.text or "t.me/" in message.text or "www." in message.text):
             try:
                 await message.delete()
@@ -50,16 +44,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 response = model.generate_content(user_message)
                 await message.reply_text(response.text)
             except Exception as e:
-                await message.reply_text("ببوورە، کێشەیەک لە وەڵامدانەوەی ئەقڵی دەستکرددا ڕوویدا.")
+                await message.reply_text(f"هەڵە: {str(e)}")
     else:
-        # چاتی تایبەت (Private) ئاسایی وەڵام دەداتەوە
         user_message = message.text
         if user_message:
             try:
                 response = model.generate_content(user_message)
                 await message.reply_text(response.text)
             except Exception as e:
-                await message.reply_text("ببوورە، کێشەیەک ڕوویدا.")
+                await message.reply_text(f"هەڵە: {str(e)}")
 
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
