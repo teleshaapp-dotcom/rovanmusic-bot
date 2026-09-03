@@ -11,13 +11,12 @@ from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
 
 # ---------------------------------------------------------------
-# ڕێکخستنی سەرەکی
+# ڕێکخستنی سەرەکی و زانیارییە تایبەتەکان
 # ---------------------------------------------------------------
-load_dotenv()
+API_ID = 35712521
+API_HASH = "b0713b67f41a77cb3271d49f84705d08"
+BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-API_ID = int(os.getenv("API_ID", "0"))
-API_HASH = os.getenv("API_HASH", "")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 NEW_MEMBER_WINDOW_SECONDS = int(os.getenv("NEW_MEMBER_WINDOW_SECONDS", "600"))
@@ -111,7 +110,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3) گفتوگۆ و وەڵامدانەوە بە زمانە جیاوازەکان بە ڕیپلەی بۆت (بە API ڕاستەوخۆ)
+# 2 & 3) گفتوگۆ و وەڵامدانەوە بە زمانە جیاوازەکان بە ڕیپلەی بۆت
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant. "
@@ -121,9 +120,8 @@ SYSTEM_PROMPT = (
 
 def ask_ai(prompt: str) -> str:
     if not GEMINI_API_KEY:
-        return "کلیلی AI ڕێکنەخراوە."
+        return "کلیلی AI ڕێکنەخراوە (تکایە GEMINI_API_KEY لە ڕەیڵوەی دابنە)."
     try:
-        # بەکارهێنانی نسخشەی v1 و مۆدێلی gemini-1.5-flash بە شێوازی داواکاری ڕاستەوخۆ
         url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
         payload = {
             "contents": [{
