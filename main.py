@@ -28,13 +28,6 @@ GREETING_FA = "سلام! چطوری؟ 😊"
 HOW_KU = "من باشم! تۆ چۆنی؟ 😊"
 HOW_FA = "من خوبم! تو چطوری؟ 😊"
 
-# دەستپێکردنی بۆت
-@bot.on_startup()
-async def startup():
-    await user.start()
-    await call.start()
-    print("✅ بۆتەکە بە سەرکەوتوویی کاردەکات!")
-
 # فەرمانی /play بۆ گۆرانی
 @bot.on_message(filters.command("play") & filters.group)
 async def play_command(client, message: Message):
@@ -91,3 +84,14 @@ async def ai_private(client, message: Message):
         await message.reply_text(f"**🤖 AI:** {response.text}")
     except Exception as e:
         await message.reply_text(f"هەڵەیەک ڕوویدا: {e}")
+
+# ====================== دەستپێکردن ======================
+async def main():
+    await user.start()
+    await call.start()
+    await bot.start()
+    print("✅ بۆتەکە بە سەرکەوتوویی کاردەکات!")
+    await asyncio.Event().wait()  # بۆ ئەوەی بۆتەکە بەردەوام بێت
+
+if __name__ == "__main__":
+    asyncio.run(main())
