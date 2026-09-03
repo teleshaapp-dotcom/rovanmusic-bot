@@ -1,7 +1,7 @@
-pyrogram==2.0.106
-pytgcalls==2.2.0
-yt-dlp==2023.10.13
-ffmpeg-python==0.2.0
-requests==2.31.0
-gTTS==2.3.2
-googletrans==4.0.0-rc1
+pyrogram
+pytgcalls
+yt-dlp
+ffmpeg-python
+requests
+gTTS
+googletrans
