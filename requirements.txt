@@ -1,6 +1,4 @@
-kurigram
-tgcrypto
-py-tgcalls
-yt-dlp
+pyrogram
 python-dotenv
 requests
+google-generativeai
