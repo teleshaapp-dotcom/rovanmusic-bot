@@ -24,7 +24,8 @@ API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-AI_PROVIDER = os.getenv("AI_PROVIDER", "anthropic")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -136,7 +137,20 @@ SYSTEM_PROMPT = (
 
 
 def ask_ai(prompt: str) -> str:
-    if AI_PROVIDER == "anthropic" and ANTHROPIC_API_KEY:
+    if AI_PROVIDER == "gemini" and GEMINI_API_KEY:
+        resp = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            json={
+                "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    elif AI_PROVIDER == "anthropic" and ANTHROPIC_API_KEY:
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={
