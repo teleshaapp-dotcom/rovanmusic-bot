@@ -1,2 +1,6 @@
 pyrogram
+pytgcalls
 google-generativeai
+ffmpeg-python
+yt-dlp
+gTTS
