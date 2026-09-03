@@ -8,9 +8,6 @@ from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
-from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream
-import yt_dlp
 import google.generativeai as genai
 
 # ---------------------------------------------------------------
@@ -35,7 +32,6 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ai-bot")
 
 app = Client("ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-call_py = PyTgCalls(app)
 
 new_members: dict[int, dict[int, float]] = {}
 
@@ -43,12 +39,9 @@ LINK_REGEX = re.compile(
     r"(https?://\S+|www\.\S+|t\.me/\S+|@\w{4,})", re.IGNORECASE
 )
 
-DOWNLOAD_DIR = "downloads"
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
 
 # ---------------------------------------------------------------
-# 1) بەخێرهاتنی خەڵک (ئەندامی نوێ)
+# 1 & 7) بەخێرهاتنی خەڵک و سڕینەوەی پاشماوەکەی
 # ---------------------------------------------------------------
 @app.on_chat_member_updated()
 async def welcome_new_member(client: Client, update: ChatMemberUpdated):
@@ -73,7 +66,6 @@ async def welcome_new_member(client: Client, update: ChatMemberUpdated):
     
     try:
         sent_msg = await client.send_message(chat_id, text)
-        # 7) سڕینەوەی پاشماوەی هاتنی خەڵک
         asyncio.create_task(delete_welcome_later(sent_msg))
     except Exception as e:
         log.warning(f"couldn't send welcome message: {e}")
@@ -125,7 +117,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3 & 4) وەڵامدانەوە، گفتوگۆ بە زمانە جیاوازەکان، و لێدانی گۆرانی بە ڕیپلەی
+# 2 & 3) گفتوگۆ و وەڵامدانەوە بە زمانە جیاوازەکان بە ڕیپلەی بۆت
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant. "
@@ -144,28 +136,6 @@ def ask_ai(prompt: str) -> str:
         return f"هەڵە: {e}"
 
 
-def download_audio(query: str) -> str:
-    out_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": out_path,
-        "postprocessors": [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": "mp3",
-            "preferredquality": "192",
-        }],
-        "noplaylist": True,
-        "quiet": True,
-        "default_search": "ytsearch1",
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(query, download=True)
-        if "entries" in info:
-            info = info["entries"][0]
-        video_id = info["id"]
-    return os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
-
-
 @app.on_message(filters.group & filters.text, group=2)
 async def handle_group_messages(client: Client, message: Message):
     me = await client.get_me()
@@ -180,24 +150,9 @@ async def handle_group_messages(client: Client, message: Message):
         return
 
     text_content = message.text.strip()
-    lower_text = text_content.lower()
-
-    # 4) ئەگەر ڕیپلەی وشەی (پخش، پلەی، play) کرابێت بۆ لێدانی گۆرانی
-    if any(word in lower_text for word in ["پخش", "پلەی", "play", "لێبدە", "آهنگ"]):
-        query = re.sub(r'^(پخش|پلەی|play|لێبدە|آهنگ)\s*', '', text_content, flags=re.IGNORECASE).strip()
-        if not query:
-            query = text_content
-
-        status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت و دەچێتە ڤۆیس کڵاس... / در حال پخش...")
-        try:
-            file_path = await asyncio.to_thread(download_audio, query)
-            await call_py.play(message.chat.id, MediaStream(file_path))
-            await status.edit_text(f"▶️ ئێستا لە ڤۆیس کڵاس لێدەدرێت: {query}")
-        except Exception as e:
-            await status.edit_text(f"نەتوانرا لە ڤۆیس کڵاس لێبدرێت: {e}")
+    if not text_content:
         return
 
-    # 2 & 3) گفتوگۆ و وەڵامدانەوەی زیرەک بە زمانە جیاوازەکان
     thinking = await message.reply_text("...")
     try:
         answer = await asyncio.to_thread(ask_ai, text_content)
@@ -211,7 +166,6 @@ async def handle_group_messages(client: Client, message: Message):
 # ---------------------------------------------------------------
 if __name__ == "__main__":
     app.start()
-    call_py.start()
     log.info("Bot started successfully.")
     from pyrogram import idle
     idle()
