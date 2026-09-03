@@ -1,74 +1,81 @@
-from pyrogram import Client, filters
-from pyrogram.types import Message
 import os
-import random
+from pyrogram import Client, filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pytgcalls import PyTgCalls
+from pytgcalls.types import MediaStream
 
-# ====== گۆڕاوەکان ======
+# زانیارییەکان لە ڕێڵوەی (Environment Variables) وەردەگرین
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+STRING_SESSION = os.environ.get("STRING_SESSION", "")
 
-# ====== پێکهێنانی بۆت ======
-bot = Client("bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
+# دروستکردنی بۆت و یوزەر
+bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+user = Client("user", api_id=API_ID, api_hash=API_HASH, session_string=STRING_SESSION)
 
-# ====== وەڵامەکان ======
-GREETINGS_KU = [
-    "سڵاو {}! بەخێربێیت بۆ گروپ! 🌸",
-    "سڵاو {}! خۆشحاڵین بە بینینی تۆ! 💫",
-    "سڵاو {}! بەخێربێیت! 🌺"
-]
+# دروستکردنی پەیوەندی دەنگی
+call = PyTgCalls(user)
 
-GREETINGS_FA = [
-    "سلام {}! خوش آمدید به گروه! 🌸",
-    "سلام {}! خوشحالیم که اینجایی! 💫",
-    "سلام {}! خوش آمدید! 🌺"
-]
+# ====================== هەندێک وەڵامی سادە ======================
+GREETINGS_KU = ["سڵاو! چۆنی؟ 😊", "بەخێربێیت بۆ گروپ! 🌹"]
+GREETINGS_FA = ["سلام! چطوری؟ 😊", "خوش آمدید! 🌹"]
 
-HOW_KU = ["من باشم {}! تۆ چۆنی؟ 😊", "زۆر باشم {}! تۆ چۆنی؟ 🌸"]
-HOW_FA = ["من خوبم {}! تو چطوری؟ 😊", "خیلی خوبم {}! تو چطوری؟ 🌸"]
-THANK_KU = ["بەخێربێیت {}! ☺️", "شایەنی سوپاس نەبوو {}! 🌸"]
-THANK_FA = ["خواهش می‌کنم {}! ☺️", "قابل شما رو نداره {}! 🌸"]
+HOW_KU = "من باشم! تۆ چۆنی؟ 😊"
+HOW_FA = "من خوبم! تو چطوری؟ 😊"
 
-# ====== فەرمانەکان ======
-@bot.on_message(filters.command("start"))
+# ====================== فەرمانەکان ======================
+@bot.on_message(filters.command("start") & filters.private)
 async def start_command(client, message: Message):
-    await message.reply("🎵 **ڕۆڤان بۆت**\n\nمن بۆتێکی قسەکەرم! 🗣️")
+    await message.reply_text("من بۆتێکی مۆسیقام! 🎵\nفەرمانی /play بەکاربهێنە بۆ لێدانی گۆرانی.")
 
-@bot.on_message(filters.command("ping"))
-async def ping_command(client, message: Message):
-    await message.reply("🏓 پۆنگ! بۆت کاردەکات! ✅")
+@bot.on_message(filters.command("play"))
+async def play_command(client, message: Message):
+    if len(message.command) < 2:
+        await message.reply_text("تکایە ناوی گۆرانییەکە بنووسە. بۆ نموونە: /play Sia Unstoppable")
+        return
 
-# ====== وەڵامدانەوەی ریپلەی ======
-@bot.on_message(filters.reply & filters.group)
+    query = " ".join(message.command[1:])
+    chat_id = message.chat.id
+
+    await message.reply_text(f"🔍 بەدوای گۆرانی {query} دەگەڕێم...")
+
+    # پەیوەندی بە گروپەوە دەکەین
+    try:
+        await call.join_group_call(
+            chat_id,
+            MediaStream(
+                f"https://www.youtube.com/results?search_query={query}",
+                audio_parameters=MediaStream.AudioParameters(
+                    bitrate=48000,
+                ),
+            ),
+        )
+        await message.reply_text(f"🎵 ئێستا گۆرانی {query} لێدەدرێت!")
+    except Exception as e:
+        await message.reply_text(f"هەڵەیەک ڕوویدا: {e}")
+
+# ====================== وەڵامدانەوەی سادە ======================
+@bot.on_message(filters.text & filters.group)
 async def reply_handler(client, message: Message):
-    if message.reply_to_message.from_user.id == (await client.get_me()).id:
-        user_name = message.from_user.first_name
-        text = message.text.lower() if message.text else ""
-        
-        is_farsi = any(word in text for word in ["سلام", "چطوری", "ممنون"])
-        
-        if any(word in text for word in ["چۆنی", "چطوری"]):
-            response = random.choice(HOW_FA if is_farsi else HOW_KU).format(user_name)
-        elif any(word in text for word in ["سوپاس", "ممنون"]):
-            response = random.choice(THANK_FA if is_farsi else THANK_KU).format(user_name)
-        else:
-            response = random.choice(GREETINGS_FA if is_farsi else GREETINGS_KU).format(user_name)
-        
-        await message.reply(response)
+    text = message.text.lower() if message.text else ""
+    user_name = message.from_user.first_name if message.from_user else "بەکارهێنەر"
 
-# ====== وەڵامدانەوەی سڵاو ======
-@bot.on_message(filters.text & filters.group & ~filters.reply)
-async def greeting_handler(client, message: Message):
-    text = message.text.lower()
-    user_name = message.from_user.first_name
-    
-    if any(word in text for word in ["سڵاو", "سلاو", "سەلام"]):
-        response = random.choice(GREETINGS_KU).format(user_name)
-        await message.reply(response)
-    elif any(word in text for word in ["سلام", "درود"]):
-        response = random.choice(GREETINGS_FA).format(user_name)
-        await message.reply(response)
+    if any(word in text for word in ["چۆنی", "چطوری"]):
+        await message.reply_text(HOW_KU)
+    elif any(word in text for word in ["سڵاو", "سلام"]):
+        await message.reply_text(GREETINGS_KU[0])
 
-# ====== دەستپێکردن ======
-print("🚀 بۆت دەستپێدەکات...")
-bot.run()
+# ====================== دەستپێکردن ======================
+async def main():
+    # دەستپێکردنی یوزەر پێش بۆت
+    await user.start()
+    await call.start()
+    await bot.start()
+    print("✅ بۆتەکە بە سەرکەوتوویی کار دەکات!")
+    await pyrogram.idle()
+
+if __name__ == "__main__":
+    import asyncio
+    import pyrogram
+    asyncio.run(main())
