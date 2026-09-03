@@ -1,100 +1,116 @@
-import asyncio
-import os
-
 from pyrogram import Client, filters
+from pyrogram.types import Message, CallbackQuery
 from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream
+from pytgcalls.types import AudioPiped, AudioQuality
+import os
+import yt_dlp
 
-# -----------------------------------------------------------------
-# هەموو نهێنییەکان (API_ID, API_HASH, BOT_TOKEN, STRING_SESSION) دەبێت
-# لە Railway -> Variables دابنرێن، هەرگیز لێرە بە شێوەی ڕاستەوخۆ ننووسرێن.
-# -----------------------------------------------------------------
-API_ID = int(os.environ["API_ID"])
-API_HASH = os.environ["API_HASH"]
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-STRING_SESSION = os.environ["STRING_SESSION"]  # لە session_generator.py وەریدەگریت
+# ------------------ پێکهێنانی بۆت ------------------
+bot = Client("bot", bot_token=BOT_TOKEN)
+user = Client("user", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
+app = PyTgCalls(user)
 
-DOWNLOAD_DIR = "downloads"
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+# ------------------ گۆڕینی URL بۆ ئەودیۆ ------------------
+def download_audio(url):
+    """گۆڕینی URL بۆ فایلی MP3"""
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+        }],
+        'outtmpl': 'downloads/%(title)s.%(ext)s',
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        filename = ydl.prepare_filename(info)
+        return filename.replace('.webm', '.mp3').replace('.m4a', '.mp3')
 
-# بۆتی ئاسایی (Bot API) - وەرگرتنی کۆماند و فایلی گۆرانی
-bot = Client(
-    "rovanmusic_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN,
-)
+# ------------------ دەستپێکردنی پەخش ------------------
+async def play_audio(chat_id, audio_path, title="گۆرانی"):
+    """پەخشکردنی گۆرانی لە ڤۆیس چات"""
+    try:
+        await app.join_group_call(
+            chat_id,
+            AudioPiped(
+                audio_path,
+                audio_parameters=AudioQuality(bitrate=128)
+            )
+        )
+        return True
+    except Exception as e:
+        print(f"هەڵە: {e}")
+        return False
 
-# هەژماری ڕاستەقینە (Userbot) - چوونە ناو Voice Chat
-user = Client(
-    "rovanmusic_user",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=STRING_SESSION,
-)
-
-call_py = PyTgCalls(user)
-
-
-@bot.on_message(filters.command("start"))
-async def start_command(client, message):
-    await message.reply_text(
-        "سڵاو غازی گیان! بۆتی مۆزیک لەسەر ڕێپۆزیتۆری نوێ بە سەرکەوتوویی ئامادە شد و کار دەکات 🎵\n\n"
-        "گۆرانییەک وەک فایلی دەنگ بنێرە بۆ گروپەکە، بۆتەکە خۆکارانە دەیخاتە ناو ڤۆیس چات.\n"
-        "کۆماندی /stop بۆ ڕاگرتنی مۆزیک."
+# ------------------ وەرگرتنی پەیامی گۆرانی ------------------
+@bot.on_message(filters.audio | filters.video | filters.document)
+async def audio_handler(client, message: Message):
+    """کاتێک گۆرانیەک دەنێردرێت"""
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    # دروستکردنی کلیکی پلەی
+    await message.reply(
+        "🎵 گۆرانیەک وەرگیرا!\n"
+        "👆 کلیک لەسەر **پلەی** بکە بۆ پەخشکردن لە ڤۆیس چات",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("▶️ پلەی", callback_data=f"play_{message.id}")],
+            [InlineKeyboardButton("⏹ وەستان", callback_data="stop")]
+        ])
     )
 
+# ------------------ کارکردنی کلیکی پلەی ------------------
+@bot.on_callback_query()
+async def callback_handler(client, callback_query: CallbackQuery):
+    data = callback_query.data
+    chat_id = callback_query.message.chat.id
+    
+    if data.startswith("play_"):
+        # دۆزینەوەی پەیامی گۆرانی
+        msg_id = int(data.split("_")[1])
+        msg = await client.get_messages(chat_id, msg_id)
+        
+        # ناردنی پەیامی چاوەڕوانی
+        await callback_query.answer("⏳ گۆرانی بار دەکرێت...")
+        
+        # هەڵگرتنی گۆرانی
+        audio_path = None
+        if msg.audio:
+            audio_path = await msg.download(f"downloads/{msg.audio.file_name}")
+        elif msg.video:
+            audio_path = await msg.download(f"downloads/{msg.video.file_name}")
+        elif msg.document:
+            audio_path = await msg.download(f"downloads/{msg.document.file_name}")
+        elif msg.text and "youtube.com" in msg.text:
+            # گۆرانی لە یوتیوب
+            audio_path = download_audio(msg.text)
+        
+        if audio_path:
+            # چوونە ناو ڤۆیس چات و پەخش
+            success = await play_audio(chat_id, audio_path, msg.audio.file_name if msg.audio else "گۆرانی")
+            
+            if success:
+                await callback_query.message.reply(
+                    "✅ گۆرانی دەپەخشێت لە ڤۆیس چات!",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("⏹ وەستان", callback_data="stop")]
+                    ])
+                )
+            else:
+                await callback_query.message.reply("❌ نەتوانرا بچێتە ڤۆیس چات!")
+        else:
+            await callback_query.message.reply("❌ فایلی گۆرانی نەدۆزرایەوە!")
+    
+    elif data == "stop":
+        # وەستاندنی گۆرانی و دەرچوون لە ڤۆیس چات
+        await app.leave_group_call(chat_id)
+        await callback_query.message.reply("⏹ گۆرانی وەستا!")
+        await callback_query.answer("وەستا")
 
-@bot.on_message(filters.audio | filters.voice)
-async def handle_audio(client, message):
-    chat_id = message.chat.id
+# ------------------ دەستپێکردنی بۆت ------------------
+bot.start()
+user.start()
+app.start()
 
-    status_msg = await message.reply_text("⏳ گۆرانییەکە دادەبەزێنم...")
-
-    try:
-        file_path = await message.download(file_name=f"{DOWNLOAD_DIR}/")
-    except Exception as e:
-        await status_msg.edit_text(f"❌ نەمتوانی گۆرانییەکە دابگرم: {e}")
-        return
-
-    try:
-        # ئەگەر پێشتر لە voice chat جوینکراوە، play دەیگۆڕێت
-        try:
-            await call_py.play(chat_id, MediaStream(file_path))
-        except Exception:
-            await call_py.join_group_call(chat_id, MediaStream(file_path))
-
-        await status_msg.edit_text("🎶 گۆرانییەکە ئێستا لە ڤۆیس چاتی گروپەکە دەدرێت.")
-    except Exception as e:
-        await status_msg.edit_text(
-            f"❌ نەمتوانرا بچمە ناو ڤۆیس چات. دڵنیابەرەوە کە ڤۆیس چات کراوەیە لە گروپەکە.\nهەڵە: {e}"
-        )
-    finally:
-        # فایلە خوارەوەکە دەسڕینەوە بۆ پاراستنی بۆشایی دیسک
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
-
-
-@bot.on_message(filters.command("stop"))
-async def stop_command(client, message):
-    chat_id = message.chat.id
-    try:
-        await call_py.leave_call(chat_id)
-        await message.reply_text("⏹️ مۆزیکەکە ڕاگیرا و لە ڤۆیس چات دەرچووم.")
-    except Exception as e:
-        await message.reply_text(f"هەڵە لە ڕاگرتن: {e}")
-
-
-async def main():
-    await user.start()
-    await bot.start()
-    await call_py.start()
-    print("Bot is starting...")
-    await asyncio.Event().wait()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+print("✅ بۆت کاردەکات!")
