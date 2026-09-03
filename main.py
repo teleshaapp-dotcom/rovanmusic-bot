@@ -8,37 +8,38 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# دۆزینەوەی خۆکارانەی مۆدێلی بەردەست بۆ ڕێگریکردن لە هەر هەڵەیەک
-def get_working_model():
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                return genai.GenerativeModel(m.name)
-    except Exception as e:
-        print(f"هەڵە لە وەرگرتنی مۆدێل: {e}")
-    # ئەگەر هەر کێشەیەک هەبوو، وەک جێگرەوە
-    return genai.GenerativeModel('gemini-pro')
-
-model = get_working_model()
+# بەکارهێنانی مۆدێلی بنەڕەتی کە لەسەر هەموو کلیلەکان کار دەکات
+try:
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+except:
+    model = genai.GenerativeModel("gemini-pro")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message:
         return
 
-    # ١. بەخێرهاتنی کەسی نوێ بۆ گروپ و سڕینەوەی نامەی پاشماوە
+    # ١. سڕینەوەی پاشماوەی هاتنە ژوورەوەی خەڵک بۆ گروپ
     if message.new_chat_members:
         for member in message.new_chat_members:
-            welcome_text = f"بەخێر بێیت بۆ گروپ، {member.full_name} گیان! 😊"
-            await message.reply_text(welcome_text)
-        
+            await message.reply_text(f"بەخێر بێیت بۆ گروپ، {member.full_name} گیان! 😊")
         try:
             await message.delete()
-        except Exception as e:
-            print(f"ناتوانێت نامەی جۆین بسڕێتەوە: {e}")
+        except:
+            pass
         return
 
-    # ٢. وەڵامدانەوەی AI لە گروپدا تەنها کاتێک ڕیپلەی بۆتەکە بکرێت
+    # ٢. سڕینەوەی لینک کاتێک کەسێک دەنێرێت لە گروپدا
+    if message.chat.type in ["group", "supergroup"]:
+        # پشکنین بۆ ئەگەر لینک لە نامەکەدا هەبێت (http, https, t.me, www)
+        if message.text and ("http://" in message.text or "https://" in message.text or "t.me/" in message.text or "www." in message.text):
+            try:
+                await message.delete()
+                return
+            except:
+                pass
+
+    # ٣. وەڵامدانەوەی AI تەنها کاتێک کەسێک ڕیپلەی بۆتەکە بکات لە گروپدا
     if message.chat.type in ["group", "supergroup"]:
         if message.reply_to_message and message.reply_to_message.from_user.id == context.bot.id:
             user_message = message.text
@@ -49,16 +50,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 response = model.generate_content(user_message)
                 await message.reply_text(response.text)
             except Exception as e:
-                await message.reply_text(f"هەڵە ڕووی دا: {e}")
+                await message.reply_text("ببوورە، کێشەیەک لە وەڵامدانەوەی ئەقڵی دەستکرددا ڕوویدا.")
     else:
-        # چاتی تایبەت (Private)
+        # چاتی تایبەت (Private) ئاسایی وەڵام دەداتەوە
         user_message = message.text
         if user_message:
             try:
                 response = model.generate_content(user_message)
                 await message.reply_text(response.text)
             except Exception as e:
-                await message.reply_text(f"هەڵە: {e}")
+                await message.reply_text("ببوورە، کێشەیەک ڕوویدا.")
 
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
