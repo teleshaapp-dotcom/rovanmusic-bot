@@ -4,16 +4,14 @@ import time
 import asyncio
 import logging
 
-import requests
 from dotenv import load_dotenv
-
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
-
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream
 import yt_dlp
+import google.generativeai as genai
 
 # ---------------------------------------------------------------
 # ڕێکخستنی سەرەکی
@@ -24,10 +22,13 @@ API_ID = int(os.getenv("API_ID", "0"))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # بەکارهێنانی مۆدێلی سەقامگیر و دروست
+    ai_model = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    ai_model = None
 
 NEW_MEMBER_WINDOW_SECONDS = int(os.getenv("NEW_MEMBER_WINDOW_SECONDS", "600"))
 
@@ -123,7 +124,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی زیرەکانە (AI)
+# 3) وەڵامدانەوەی زیرەکانە (AI) بە کتێبخانەی فەرمی
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant for a Telegram chat. "
@@ -133,27 +134,15 @@ SYSTEM_PROMPT = (
     "Keep answers short, friendly, and clear."
 )
 
-
 def ask_ai(prompt: str) -> str:
-    api_key = GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")
-    
-    if api_key:
-        try:
-            # بەکارهێنانی v1 و gemini-1.5-flash بۆ ڕێگریکردن لە هەڵەی 404
-            resp = requests.post(
-                f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}",
-                json={
-                    "contents": [{"parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]}],
-                },
-                timeout=30,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception as e:
-            return f"هەڵە لە پەیوەندی بە جیمینای: {e}"
-
-    return "کلیلی AI ڕێکنەخراوە، تکایە لە فایلی .env یان سەیتینگەکانی سێرڤەر دایبنێ."
+    if not ai_model:
+        return "کلیلی AI ڕێکنەخراوە، تکایە لە سەیتینگەکانی سێرڤەر (Variables) دایبنێ."
+    try:
+        full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
+        response = ai_model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        return f"هەڵە لە پەیوەندی بە جیمینای: {e}"
 
 
 @app.on_message(filters.group & filters.text & ~filters.command(["play", "skip", "stop", "pause", "resume"]), group=2)
