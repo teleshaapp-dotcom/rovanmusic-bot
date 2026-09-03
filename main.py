@@ -1,7 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped, AudioQuality
+from pyrogram.types import Message
 import os
 import tempfile
 from gtts import gTTS
@@ -10,12 +8,9 @@ from gtts import gTTS
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
 # ====== پێکهێنانی بۆت ======
 bot = Client("bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
-user = Client("user", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
-app = PyTgCalls(user)
 
 # ====== گۆڕینی دەق بۆ دەنگ ======
 async def text_to_voice(text, lang='ku'):
@@ -28,22 +23,23 @@ async def text_to_voice(text, lang='ku'):
         print(f"هەڵە: {e}")
         return None
 
-# ====== فەرمانەکان ======
+# ====== فەرمانی /start ======
 @bot.on_message(filters.command("start"))
 async def start_command(client, message: Message):
     await message.reply(
         "🎵 **ڕۆڤان بۆت**\n\n"
         "من بۆتێکی گۆرانی و دەق بۆ دەنگم!\n\n"
         "📌 **فەرمانەکان:**\n"
-        "/tts [دەق] - گۆڕینی دەق بۆ دەنگ\n"
-        "/ping - تاقیکردنەوە\n\n"
-        "🔊 گۆرانیەک بنێرە بۆ پەخشکردن لە ڤۆیس چات!"
+        "/tts [دەق] - گۆڕینی دەق بۆ دەنگ (کوردی/فارسی)\n"
+        "/ping - تاقیکردنەوەی کارکردن"
     )
 
+# ====== فەرمانی /ping ======
 @bot.on_message(filters.command("ping"))
 async def ping_command(client, message: Message):
-    await message.reply("🏓 پۆنگ! بۆت کاردەکات!")
+    await message.reply("🏓 پۆنگ! بۆت کاردەکات! ✅")
 
+# ====== فەرمانی /tts ======
 @bot.on_message(filters.command("tts"))
 async def tts_command(client, message: Message):
     text = message.text.replace("/tts", "").strip()
@@ -52,6 +48,7 @@ async def tts_command(client, message: Message):
         await message.reply("❌ تکایە دەقێک بنووسە! نموونە:\n`/tts سڵاو چۆنی`")
         return
     
+    # دەستنیشانکردنی زمان
     lang = 'ku'
     if 'فارسی' in text:
         lang = 'fa'
@@ -71,50 +68,21 @@ async def tts_command(client, message: Message):
         await wait_msg.delete()
         await message.reply(f"✅ دەق گۆڕدرا بۆ دەنگ! زمان: {'کوردی' if lang == 'ku' else 'فارسی'}")
     else:
-        await message.reply("❌ هەڵە ڕوویدا!")
+        await message.reply("❌ هەڵە ڕوویدا! تکایە دووبارە هەوڵبدەرەوە.")
 
+# ====== وەرگرتنی گۆرانی ======
 @bot.on_message(filters.audio | filters.video | filters.document)
 async def audio_handler(client, message: Message):
-    await message.reply(
-        "🎵 گۆرانیەک وەرگیرا!\n"
-        "▶️ کلیک لەسەر **پلەی** بکە بۆ پەخشکردن",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("▶️ پلەی", callback_data=f"play_{message.id}")],
-            [InlineKeyboardButton("⏹ وەستان", callback_data="stop")]
-        ])
-    )
-
-@bot.on_callback_query()
-async def callback_handler(client, callback_query: CallbackQuery):
-    data = callback_query.data
-    chat_id = callback_query.message.chat.id
-    
-    if data.startswith("play_"):
-        await callback_query.answer("⏳ گۆرانی بار دەکرێت...")
-        msg_id = int(data.split("_")[1])
-        msg = await client.get_messages(chat_id, msg_id)
-        
-        if msg.audio:
-            audio_path = await msg.download(f"downloads/{msg.audio.file_name}")
-            await app.join_group_call(chat_id, AudioPiped(audio_path, AudioQuality(bitrate=128)))
-            await callback_query.message.reply("✅ گۆرانی دەپەخشێت!")
-        else:
-            await callback_query.message.reply("❌ فایلی گۆرانی نەدۆزرایەوە!")
-    
-    elif data == "stop":
-        await app.leave_group_call(chat_id)
-        await callback_query.message.reply("⏹ گۆرانی وەستا!")
-        await callback_query.answer("وەستا")
+    if message.audio:
+        await message.reply(f"🎵 گۆرانیەک وەرگیرا!\n📁 ناو: {message.audio.file_name}")
+    else:
+        await message.reply("📁 فایلێک وەرگیرا!")
 
 # ====== دەستپێکردن ======
 print("🚀 بۆت دەستپێدەکات...")
+print(f"🤖 ناوی بۆت: {BOT_TOKEN[:15]}...")
 
-async def main():
-    await bot.start()
-    await user.start()
-    await app.start()
-    print("✅ بۆت بە سەرکەوتوویی کاردەکات!")
-    await bot.idle()
-
-import asyncio
-asyncio.run(main())
+try:
+    bot.run()
+except Exception as e:
+    print(f"❌ هەڵە: {e}")
