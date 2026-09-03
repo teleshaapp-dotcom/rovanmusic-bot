@@ -1,5 +1,4 @@
 pyrogram
 pytgcalls
 yt-dlp
-aiohttp
-
+ffmpeg-python
