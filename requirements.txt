@@ -1,8 +1,2 @@
-pyrogram
-py-tgcalls
-google-generativeai
-ffmpeg-python
-yt-dlp
-gTTS
 python-telegram-bot
 google-generativeai
