@@ -1,4 +1,3 @@
-
 import os
 import re
 import time
@@ -278,12 +277,9 @@ async def resume_song(client: Client, message: Message):
 # ---------------------------------------------------------------
 # دەستپێکردن
 # ---------------------------------------------------------------
-async def main():
-    await app.start()
-    await call_py.start()
-    log.info("Bot started.")
-    await asyncio.Event().wait()
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.start()
+    call_py.start()
+    log.info("Bot started.")
+    from pyrogram import idle
+    idle()
