@@ -1,4 +1,3 @@
-
 import os
 import re
 import time
@@ -38,7 +37,6 @@ log = logging.getLogger("ai-bot")
 app = Client("ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 call_py = PyTgCalls(app)
 
-# لیستی بەکارهێنەرە نوێیەکان: {chat_id: {user_id: join_timestamp}}
 new_members: dict[int, dict[int, float]] = {}
 
 LINK_REGEX = re.compile(
@@ -59,7 +57,7 @@ async def welcome_new_member(client: Client, update: ChatMemberUpdated):
     if update.new_chat_member.status != ChatMemberStatus.MEMBER:
         return
     if update.old_chat_member is not None:
-        return  # گۆڕانکاری ڕۆڵ نەک چوونەژوورەوەی نوێ
+        return
 
     user = update.new_chat_member.user
     if user.is_bot:
@@ -98,7 +96,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
     join_time = new_members.get(chat_id, {}).get(user_id)
     if join_time is None:
-        return  # ئەندامێکی کۆنە، دەستکاری ناکەین
+        return
 
     if time.time() - join_time > NEW_MEMBER_WINDOW_SECONDS:
         new_members[chat_id].pop(user_id, None)
@@ -125,7 +123,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی زیرەکانە (AI) کاتێک کەسێک ڕیپلەی بۆت دەکات یان ناوی دێنێت
+# 3) وەڵامدانەوەی زیرەکانە (AI)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant for a Telegram chat. "
@@ -137,16 +135,15 @@ SYSTEM_PROMPT = (
 
 
 def ask_ai(prompt: str) -> str:
-    # پشکنینی هەمەلایەنە بۆ کلیلەکان بۆ ئەوەی هەرگیز کێشەی نەبوونی کلیل نەدات
     api_key = GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")
     
     if api_key:
         try:
+            # گۆڕینی ناوی مۆدێل بۆ gemini-1.0-pro بۆ ئەوەی کێشەی 404 نەمێنێت
             resp = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key={api_key}",
                 json={
-                    "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-                    "contents": [{"parts": [{"text": prompt}]}],
+                    "contents": [{"parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]}],
                 },
                 timeout=30,
             )
@@ -185,7 +182,7 @@ async def reply_when_mentioned(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 4) پەخشی گۆرانی بۆ لایڤ/کۆڵی دەنگی گروپ
+# 4) پەخشی گۆرانی
 # ---------------------------------------------------------------
 def download_audio(query: str) -> str:
     out_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
