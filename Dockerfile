@@ -1,7 +1,14 @@
-FROM python:3.9-slim
+# بەکارهێنانی وەشانی فەرمی پایتۆن
+FROM python:3.10-slim
+
+# دیاریکردنی شوێنی کارکردن لە ناو سێرڤەرەکەدا
 WORKDIR /app
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt .
+
+# گواستنەوەی فایلەکان بۆ ناو سێرڤەرەکە
+COPY . /app
+
+# دامەزراندنی پێداویستییەکان
 RUN pip install --no-cache-dir -r requirements.txt
-COPY main.py .
+
+# کارپێکردنی فایلی سەرەکی
 CMD ["python", "main.py"]
