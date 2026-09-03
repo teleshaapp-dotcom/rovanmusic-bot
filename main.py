@@ -4,11 +4,11 @@ import time
 import asyncio
 import logging
 
+import requests
 from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
-import google.generativeai as genai
 
 # ---------------------------------------------------------------
 # ڕێکخستنی سەرەکی
@@ -18,13 +18,7 @@ load_dotenv()
 API_ID = int(os.getenv("API_ID", "0"))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    ai_model = genai.GenerativeModel("gemini-1.5-flash")
-else:
-    ai_model = None
 
 NEW_MEMBER_WINDOW_SECONDS = int(os.getenv("NEW_MEMBER_WINDOW_SECONDS", "600"))
 
@@ -117,7 +111,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3) گفتوگۆ و وەڵامدانەوە بە زمانە جیاوازەکان بە ڕیپلەی بۆت
+# 2 & 3) گفتوگۆ و وەڵامدانەوە بە زمانە جیاوازەکان بە ڕیپلەی بۆت (بە API ڕاستەوخۆ)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant. "
@@ -126,14 +120,22 @@ SYSTEM_PROMPT = (
 )
 
 def ask_ai(prompt: str) -> str:
-    if not ai_model:
+    if not GEMINI_API_KEY:
         return "کلیلی AI ڕێکنەخراوە."
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
-        response = ai_model.generate_content(full_prompt)
-        return response.text
+        # بەکارهێنانی نسخشەی v1 و مۆدێلی gemini-1.5-flash بە شێوازی داواکاری ڕاستەوخۆ
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [{
+                "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]
+            }]
+        }
+        response = requests.post(url, json=payload, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        return f"هەڵە: {e}"
+        return f"هەڵە لە پەیوەندی بە جیمینای: {e}"
 
 
 @app.on_message(filters.group & filters.text, group=2)
