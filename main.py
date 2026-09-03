@@ -25,7 +25,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # بەکارهێنانی مۆدێلی سەقامگیر و دروست
     ai_model = genai.GenerativeModel("gemini-1.5-flash")
 else:
     ai_model = None
@@ -124,7 +123,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی زیرەکانە (AI) بە کتێبخانەی فەرمی
+# 3) وەڵامدانەوەی زیرەکانە (AI)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant for a Telegram chat. "
@@ -148,6 +147,24 @@ def ask_ai(prompt: str) -> str:
 @app.on_message(filters.group & filters.text & ~filters.command(["play", "skip", "stop", "pause", "resume"]), group=2)
 async def reply_when_mentioned(client: Client, message: Message):
     me = await client.get_me()
+    
+    # پشکنین ئایا ڕیپلەی بۆتەکە کراوە بۆ لێدانی گۆرانی؟
+    if (
+        message.reply_to_message 
+        and message.reply_to_message.from_user 
+        and message.reply_to_message.from_user.id == me.id
+    ):
+        query = message.text.strip()
+        if query:
+            status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت و دەچێتە ڤۆیس چات... / در حال پخش در ویس‌چت...")
+            try:
+                file_path = await asyncio.to_thread(download_audio, query)
+                await call_py.play(message.chat.id, MediaStream(file_path))
+                await status.edit_text(f"▶️ ئێستا لە ڤۆیس چات لێدەدرێت: {query}")
+            except Exception as e:
+                await status.edit_text(f"نەتوانرا لە ڤۆیس چات لێبدرێت: {e}")
+            return
+
     is_reply_to_bot = (
         message.reply_to_message
         and message.reply_to_message.from_user
@@ -171,7 +188,7 @@ async def reply_when_mentioned(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 4) پەخشی گۆرانی
+# 4) پەخشی گۆرانی (فەرمان یان ڕیپلەی)
 # ---------------------------------------------------------------
 def download_audio(query: str) -> str:
     out_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
