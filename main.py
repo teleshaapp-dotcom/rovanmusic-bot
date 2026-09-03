@@ -16,8 +16,8 @@ model = genai.GenerativeModel("gemini-pro")
 # دروستکردنی بۆت
 bot = Client("ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# فەرمانی /ai
-@bot.on_message(filters.command("ai") & filters.group)
+# فەرمانی /ai (لە هەردوو شوێن)
+@bot.on_message(filters.command("ai"))
 async def ai_command(client, message: Message):
     if len(message.command) < 2:
         await message.reply_text("تکایە پرسیارەکەت بنووسە. بۆ نموونە: /ai سڵاو")
@@ -31,6 +31,11 @@ async def ai_command(client, message: Message):
         await message.reply_text(f"**🤖 AI:** {response.text}")
     except Exception as e:
         await message.reply_text(f"هەڵەیەک ڕوویدا: {e}")
+
+# فەرمانی /start (لە هەردوو شوێن)
+@bot.on_message(filters.command("start"))
+async def start_command(client, message: Message):
+    await message.reply_text("من بۆتێکی AI م! 🤖\nفەرمانی /ai بەکاربهێنە بۆ وەڵامدانەوە.")
 
 # دەستپێکردن
 bot.run()
