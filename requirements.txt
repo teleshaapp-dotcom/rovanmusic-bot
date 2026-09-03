@@ -1,5 +1,5 @@
 pyrogram
 pytgcalls
+yt-dlp
 ffmpeg-python
 gTTS
-yt-dlp
