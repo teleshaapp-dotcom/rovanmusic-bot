@@ -3,7 +3,6 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import google.generativeai as genai
 
-# خوێندنەوەی تووکنەکان لە ڕەیڵوەی (لێرەدا BOT_TOKEN بەکاردەهێنین)
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -18,11 +17,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = model.generate_content(user_message)
         await update.message.reply_text(response.text)
     except Exception as e:
-        await update.message.reply_text("ببوورە، کێشەیەک ڕوویدا لە وەڵامدانەوەدا.")
+        # لێرەدا دەهێڵین هۆکاری راستەقینەی هەڵەکە لە تلیگرام دەرکەوێت
+        print(f"هەڵە: {e}")
+        await update.message.reply_text(f"هەڵەی ڕاستەقینە ئەمەیە: {e}")
 
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
-        print("هەڵە: BOT_TOKEN یان GEMINI_API_KEY دابین نەکراوە!")
+        print("هەڵە: تووکنەکان دابین نەکراون!")
         exit(1)
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
