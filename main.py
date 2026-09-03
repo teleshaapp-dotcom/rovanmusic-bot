@@ -8,8 +8,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# بەکارهێنانی ناوی تەواوی مۆدێلەکە بە پێوەری فەرمی کتێبخانەکە
-model = genai.GenerativeModel('models/gemini-1.5-flash')
+# دۆزینەوەی خۆکارانەی مۆدێلی بەردەست بۆ ڕێگریکردن لە هەر هەڵەیەک
+def get_working_model():
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                return genai.GenerativeModel(m.name)
+    except Exception as e:
+        print(f"هەڵە لە وەرگرتنی مۆدێل: {e}")
+    # ئەگەر هەر کێشەیەک هەبوو، وەک جێگرەوە
+    return genai.GenerativeModel('gemini-pro')
+
+model = get_working_model()
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
