@@ -48,7 +48,7 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 # ---------------------------------------------------------------
-# 1) بەخێرهاتنی ئەندامی نوێ
+# 1) بەخێرهاتنی خەڵک (ئەندامی نوێ)
 # ---------------------------------------------------------------
 @app.on_chat_member_updated()
 async def welcome_new_member(client: Client, update: ChatMemberUpdated):
@@ -69,22 +69,25 @@ async def welcome_new_member(client: Client, update: ChatMemberUpdated):
     name = user.first_name or user.username or "بەڕێز"
     mention = f"[{name}](tg://user?id={user.id})"
 
-    text = (
-        f"🇰🇺 بەخێربێیت {mention}! 🌹\n"
-        f"کاراکانی گروپ بخوێنەوە و چاوگەڕانی خۆش بێت.\n"
-        f"تکایە لینک و ڕیکلام مەنێرە بۆ ماوەیەکی کورت دوای چوونەژوورەوەت.\n\n"
-        f"🇮🇷 {mention} خوش آمدید! 🌹\n"
-        f"لطفاً قوانین گروه را بخوانید و خوش بگذرد.\n"
-        f"لطفاً تا مدتی کوتاه پس از عضویت، لینک یا تبلیغات ارسال نکنید."
-    )
+    text = f"بەخێربێیت {mention} بۆ گروپ! 🌹\nخۆشحاڵین بە هاتنت."
+    
     try:
-        await client.send_message(chat_id, text)
+        sent_msg = await client.send_message(chat_id, text)
+        # 7) سڕینەوەی پاشماوەی هاتنی خەڵک (پەیامی بەخێرهاتن خۆی دوای کەمێک دەسڕێتەوە)
+        asyncio.create_task(delete_welcome_later(sent_msg))
     except Exception as e:
         log.warning(f"couldn't send welcome message: {e}")
 
+async def delete_welcome_later(msg: Message):
+    await asyncio.sleep(30)
+    try:
+        await msg.delete()
+    except:
+        pass
+
 
 # ---------------------------------------------------------------
-# 2) سڕینەوەی لینک/ڕیکلامی ئەندامانی نوێ
+# 5 & 6) سڕینەوەی نامە و سڕینەوەی لینک بۆ ئەندامانی نوێ
 # ---------------------------------------------------------------
 @app.on_message(filters.group & ~filters.service, group=1)
 async def delete_links_from_new_members(client: Client, message: Message):
@@ -107,89 +110,41 @@ async def delete_links_from_new_members(client: Client, message: Message):
         e.type.name in ("URL", "TEXT_LINK", "MENTION") for e in message.entities
     ))
 
+    # ئەگەر ئەندامی نوێ لینک بنووسێت، نامەکەی دەسڕێتەوە
     if has_link:
         try:
             await message.delete()
             mention = f"[{message.from_user.first_name}](tg://user?id={user_id})"
             warn = await client.send_message(
                 chat_id,
-                f"⚠️ {mention} تکایە لینک مەنێرە تا کاتێک ئەندامی نوێیت لە گروپەکە.\n"
-                f"⚠️ {mention} لطفاً تا زمانی که عضو جدید هستید لینک ارسال نکنید."
+                f"⚠️ {mention} تکایە لینک مەنێرە تا کاتێک ئەندامی نوێیت."
             )
-            await asyncio.sleep(8)
+            await asyncio.sleep(6)
             await warn.delete()
         except Exception as e:
             log.warning(f"couldn't delete message: {e}")
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی زیرەکانە (AI)
+# 2 & 3 & 4) وەڵامدانەوە، گفتوگۆ بە زمانە جیاوازەکان، و لێدانی گۆرانی بە ڕیپلەی (پخش / پلەی)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
-    "You are a helpful group assistant for a Telegram chat. "
-    "The users write in Kurdish (Sorani) or Persian (Farsi) only. "
-    "Detect which of these two languages the user's message is written in, "
-    "and reply ONLY in that same language — never in English or any other language. "
-    "Keep answers short, friendly, and clear."
+    "You are a helpful group assistant. "
+    "Detect the language of the user's message and reply ONLY in that exact same language. "
+    "Keep answers friendly, accurate, and concise."
 )
 
 def ask_ai(prompt: str) -> str:
     if not ai_model:
-        return "کلیلی AI ڕێکنەخراوە، تکایە لە سەیتینگەکانی سێرڤەر (Variables) دایبنێ."
+        return "کلیلی AI ڕێکنەخراوە."
     try:
         full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
         response = ai_model.generate_content(full_prompt)
         return response.text
     except Exception as e:
-        return f"هەڵە لە پەیوەندی بە جیمینای: {e}"
+        return f"هەڵە: {e}"
 
 
-@app.on_message(filters.group & filters.text & ~filters.command(["play", "skip", "stop", "pause", "resume"]), group=2)
-async def reply_when_mentioned(client: Client, message: Message):
-    me = await client.get_me()
-    
-    # پشکنین ئایا ڕیپلەی بۆتەکە کراوە بۆ لێدانی گۆرانی؟
-    if (
-        message.reply_to_message 
-        and message.reply_to_message.from_user 
-        and message.reply_to_message.from_user.id == me.id
-    ):
-        query = message.text.strip()
-        if query:
-            status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت و دەچێتە ڤۆیس چات... / در حال پخش در ویس‌چت...")
-            try:
-                file_path = await asyncio.to_thread(download_audio, query)
-                await call_py.play(message.chat.id, MediaStream(file_path))
-                await status.edit_text(f"▶️ ئێستا لە ڤۆیس چات لێدەدرێت: {query}")
-            except Exception as e:
-                await status.edit_text(f"نەتوانرا لە ڤۆیس چات لێبدرێت: {e}")
-            return
-
-    is_reply_to_bot = (
-        message.reply_to_message
-        and message.reply_to_message.from_user
-        and message.reply_to_message.from_user.id == me.id
-    )
-    is_mentioned = f"@{me.username}".lower() in (message.text or "").lower()
-
-    if not (is_reply_to_bot or is_mentioned):
-        return
-
-    prompt = message.text.replace(f"@{me.username}", "").strip()
-    if not prompt:
-        return
-
-    thinking = await message.reply_text("...")
-    try:
-        answer = await asyncio.to_thread(ask_ai, prompt)
-        await thinking.edit_text(answer[:4000])
-    except Exception as e:
-        await thinking.edit_text(f"هەڵەیەک ڕوویدا: {e}")
-
-
-# ---------------------------------------------------------------
-# 4) پەخشی گۆرانی (فەرمان یان ڕیپلەی)
-# ---------------------------------------------------------------
 def download_audio(query: str) -> str:
     out_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
     ydl_opts = {
@@ -212,59 +167,53 @@ def download_audio(query: str) -> str:
     return os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
 
 
-@app.on_message(filters.command("play") & filters.group)
-async def play_song(client: Client, message: Message):
-    if len(message.command) < 2:
-        await message.reply_text(
-            "بەکارهێنان: /play ناوی گۆرانی یان بەستەری یوتیوب\n"
-            "کاربرد: /play نام آهنگ یا لینک یوتیوب"
-        )
+@app.on_message(filters.group & filters.text, group=2)
+async def handle_group_messages(client: Client, message: Message):
+    me = await client.get_me()
+    
+    is_reply_to_bot = (
+        message.reply_to_message 
+        and message.reply_to_message.from_user 
+        and message.reply_to_message.from_user.id == me.id
+    )
+
+    if not is_reply_to_bot:
         return
 
-    query = message.text.split(None, 1)[1]
-    status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت... / آهنگ در حال دانلود است...")
+    text_content = message.text.strip()
+    lower_text = text_content.lower()
 
+    # 4) ئەگەر ڕیپلەی وشەی (پخش، پلەی، play, پشک ڤیدیو، هتد) کرابێت بۆ لێدانی گۆرانی
+    if any(word in lower_text for word in ["پخش", "پلەی", "play", "لێبدە", "آهنگ"]):
+        # دەتوانین دەستەواژەی پخش/پلەی لابەین و ئەوەی ماوە بەدوایدا بگەڕێین یان خودی ناوەکە بەکاربهێنین
+        query = re.sub(r'^(پخش|پلەی|play|لێبدە|آهنگ)\s*', '', text_content, flags=IGNORECASE:=re.IGNORECASE).strip()
+        if not query:
+            query = text_content # ئەگەر تەنها ناوی گۆرانییەکە بوو
+
+        status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت و دەچێتە ڤۆیس کڵاس... / در حال پخش...")
+        try:
+            file_path = await asyncio.to_thread(download_audio, query)
+            await call_py.play(message.chat.id, MediaStream(file_path))
+            await status.edit_text(f"▶️ ئێستا لە ڤۆیس کڵاس لێدەدرێت: {query}")
+        except Exception as e:
+            await status.edit_text(f"نەتوانرا لە ڤۆیس کڵاس لێبدرێت: {e}")
+        return
+
+    # 2 & 3) گفتوگۆ و وەڵامدانەوەی زیرەک بە زمانە جیاوازەکان کاتێک ڕیپلەی بۆت دەکەیت
+    thinking = await message.reply_text("...")
     try:
-        file_path = await asyncio.to_thread(download_audio, query)
-        await call_py.play(message.chat.id, MediaStream(file_path))
-        await status.edit_text(f"▶️ ئێستا لێدەدرێت / درحال پخش: {query}")
+        answer = await asyncio.to_thread(ask_ai, text_content)
+        await thinking.edit_text(answer[:4000])
     except Exception as e:
-        await status.edit_text(f"نەتوانرا لێبدرێت / پخش نشد: {e}")
-
-
-@app.on_message(filters.command("stop") & filters.group)
-async def stop_song(client: Client, message: Message):
-    try:
-        await call_py.leave_call(message.chat.id)
-        await message.reply_text("⏹️ ڕاگیرا / متوقف شد.")
-    except Exception as e:
-        await message.reply_text(f"هەڵە / خطا: {e}")
-
-
-@app.on_message(filters.command("pause") & filters.group)
-async def pause_song(client: Client, message: Message):
-    try:
-        await call_py.pause(message.chat.id)
-        await message.reply_text("⏸️ وەستێنرا / مکث شد.")
-    except Exception as e:
-        await message.reply_text(f"هەڵە / خطا: {e}")
-
-
-@app.on_message(filters.command("resume") & filters.group)
-async def resume_song(client: Client, message: Message):
-    try:
-        await call_py.resume(message.chat.id)
-        await message.reply_text("▶️ دووبارە دەستیپێکرد / ادامه یافت.")
-    except Exception as e:
-        await message.reply_text(f"هەڵە / خطا: {e}")
+        await thinking.edit_text(f"هەڵەیەک ڕوویدا: {e}")
 
 
 # ---------------------------------------------------------------
-# دەستپێکردن
+# دەستپێکردنی بۆت
 # ---------------------------------------------------------------
 if __name__ == "__main__":
     app.start()
     call_py.start()
-    log.info("Bot started.")
+    log.info("Bot started successfully.")
     from pyrogram import idle
     idle()
