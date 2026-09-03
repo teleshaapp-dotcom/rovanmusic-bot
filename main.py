@@ -2,10 +2,10 @@ import asyncio
 from pyrogram import Client, filters
 from yt_dlp import YoutubeDL
 
-# زانیارییە سەرەتاییەکان بۆ تاقیکردنەوە و کارپێکردنی بۆت
-API_ID = 6  # دەتوانیت لە My.telegram.org وەریبگریت
-API_HASH = "eb06d4abfb49dc3eeb1aeb98ae0f581e"
-BOT_TOKEN = "لێرەدا تۆکنی بۆتەکەت لە تەلەگرام دابنە"
+# Zanyariyە Rasmiyakani Tawaw
+API_ID = 35712521
+API_HASH = "b0713b67f41a77cb3271d49f84705d08"
+BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
 app = Client(
     "rovanmusic",
@@ -16,8 +16,7 @@ app = Client(
 
 @app.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("🎵 سڵاو! بۆتی مۆزیک ئامادەیە و کار دەکات.")
+    await message.reply_text("🎵 سڵاو غازی گیان! بۆتی مۆزیک لەسەر ڕێپۆزیتۆری نوێ بە سەرکەوتوویی ئامادە شد و کار دەکات.")
 
 print("Bot is starting...")
 app.run()
-
