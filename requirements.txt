@@ -1,7 +1,6 @@
 pyrogram
-pytgcalls
 yt-dlp
 ffmpeg-python
 requests
 gTTS
-googletrans
+googletrans==4.0.0-rc1
