@@ -8,6 +8,7 @@ import requests
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import MessageNotModified
 
 # ---------------------------------------------------------------
 # ڕێکخستنی سەرەکی و زانیارییە تایبەتەکان
@@ -16,7 +17,6 @@ API_ID = 35712521
 API_HASH = "b0713b67f41a77cb3271d49f84705d08"
 BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-# کلیلی جیمینای کە ناردیەت:
 GEMINI_API_KEY = "AQ.Ab8RN6J4GXGk9Wr22ChyuKmc1xxFXQoyLOpPmoIAHPHBsIhpSQ"
 
 NEW_MEMBER_WINDOW_SECONDS = 600
@@ -156,9 +156,15 @@ async def handle_group_messages(client: Client, message: Message):
     thinking = await message.reply_text("...")
     try:
         answer = await asyncio.to_thread(ask_ai, text_content)
-        await thinking.edit_text(answer[:4000])
+        try:
+            await thinking.edit_text(answer[:4000])
+        except MessageNotModified:
+            pass
     except Exception as e:
-        await thinking.edit_text(f"هەڵەیەک ڕوویدا: {e}")
+        try:
+            await thinking.edit_text(f"هەڵەیەک ڕوویدا: {e}")
+        except MessageNotModified:
+            pass
 
 
 # ---------------------------------------------------------------
