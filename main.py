@@ -8,8 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# بەکارهێنانی ناوی ڕاستەوخۆی مۆدێلەکە بۆ کتێبخانەکە
-model = genai.GenerativeModel('gemini-pro')
+# بەکارهێنانی ناوی تەواوی مۆدێلەکە بە پێوەری فەرمی کتێبخانەکە
+model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
