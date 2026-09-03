@@ -72,15 +72,14 @@ async def reply_ready(client, message: Message):
             await message.reply_text(f"هەڵەیەک ڕوویدا: {e}")
     else:
         text = message.text.lower()
-        if any(word in text for word in ["سڵاو", "سلام", "چۆنی", "چطوری"]):
-            if any(word in text for word in ["سڵاو", "سلام"]):
-                await message.reply_text(GREETING_KU)
-            else:
-                await message.reply_text(HOW_KU)
-        elif "سلام" in text:
-            await message.reply_text(GREETING_FA)
+        if any(word in text for word in ["سڵاو", "سلام"]):
+            await message.reply_text(GREETING_KU)
+        elif "چۆنی" in text:
+            await message.reply_text(HOW_KU)
         elif "چطوری" in text:
             await message.reply_text(HOW_FA)
+        elif "سلام" in text:
+            await message.reply_text(GREETING_FA)
 
 # وەڵامدانەوەی AI بەبێ فەرمان
 @bot.on_message(filters.text & filters.private & ~filters.bot)
