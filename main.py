@@ -7,19 +7,52 @@ TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# نوێکردنەوەی ناوی مۆدێل بۆ ئەوەی لەگەڵ داواکارییەکەی سیستەم بگونجێت
-model = genai.GenerativeModel("gemini-3.6-flash")
+# بەکارهێنانی مۆدێلی گونجاو
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    if not user_message:
+    message = update.message
+    if not message:
         return
-    try:
-        response = model.generate_content(user_message)
-        await update.message.reply_text(response.text)
-    except Exception as e:
-        print(f"هەڵە: {e}")
-        await update.message.reply_text(f"هەڵەی ڕاستەقینە ئەمەیە: {e}")
+
+    # ١. بەخێرهاتنی کەسی نوێ بۆ گروپ و سڕینەوەی نامەی پاشماوەی جۆین
+    if message.new_chat_members:
+        for member in message.new_chat_members:
+            # ناردنی نامەی بەخێرهاتن
+            welcome_text = f"بەخێر بێیت بۆ گروپ، {member.full_name} گیان! 😊"
+            await message.reply_text(welcome_text)
+        
+        # سڕینەوەی پاشماوەی چوونەژوورەوەی ئەندامەکە (بۆ ئەوەی گروپەکە پیس نەبێت)
+        try:
+            await message.delete()
+        except Exception as e:
+            print(f"ناتوانێت نامەی جۆین بسڕێتەوە (پێویستە بۆتەکە ئەمنیشی هەبێت): {e}")
+        return
+
+    # ٢. وەڵامدانەوەی AI تەنها کاتێک کەسێک ڕیپلەی بۆتەکە بکات لە گروپدا (یاخود لە چاتی تایبەت)
+    if message.chat.type in ["group", "supergroup"]:
+        # پشکنین ئایا نامەکە ڕیپلەی بۆتەکەیە یان نا
+        if message.reply_to_message and message.reply_to_message.from_user.id == context.bot.id:
+            user_message = message.text
+            if not user_message:
+                return
+            try:
+                # ناردنی نیشانەی نووسین (Typing)
+                await context.bot.send_chat_action(chat_id=message.chat_id, action="typing")
+                
+                response = model.generate_content(user_message)
+                await message.reply_text(response.text)
+            except Exception as e:
+                await message.reply_text(f"هەڵە ڕووی دا: {e}")
+    else:
+        # ئەگەر لە چاتی تایبەت (Private) بوو، ئاسایی وەڵام بداتەوە
+        user_message = message.text
+        if user_message:
+            try:
+                response = model.generate_content(user_message)
+                await message.reply_text(response.text)
+            except Exception as e:
+                await message.reply_text(f"هەڵە: {e}")
 
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
@@ -27,7 +60,9 @@ if __name__ == '__main__':
         exit(1)
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    
+    # وەرگرتنی هەموو دەقەکان و چالاکییەکان
+    app.add_handler(MessageHandler(filters.TEXT | filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_message))
     
     print("بۆتەکە دەستی بە کارکردن کرد...")
     app.run_polling()
