@@ -73,7 +73,7 @@ async def welcome_new_member(client: Client, update: ChatMemberUpdated):
     
     try:
         sent_msg = await client.send_message(chat_id, text)
-        # 7) سڕینەوەی پاشماوەی هاتنی خەڵک (پەیامی بەخێرهاتن خۆی دوای کەمێک دەسڕێتەوە)
+        # 7) سڕینەوەی پاشماوەی هاتنی خەڵک
         asyncio.create_task(delete_welcome_later(sent_msg))
     except Exception as e:
         log.warning(f"couldn't send welcome message: {e}")
@@ -110,7 +110,6 @@ async def delete_links_from_new_members(client: Client, message: Message):
         e.type.name in ("URL", "TEXT_LINK", "MENTION") for e in message.entities
     ))
 
-    # ئەگەر ئەندامی نوێ لینک بنووسێت، نامەکەی دەسڕێتەوە
     if has_link:
         try:
             await message.delete()
@@ -126,7 +125,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3 & 4) وەڵامدانەوە، گفتوگۆ بە زمانە جیاوازەکان، و لێدانی گۆرانی بە ڕیپلەی (پخش / پلەی)
+# 2 & 3 & 4) وەڵامدانەوە، گفتوگۆ بە زمانە جیاوازەکان، و لێدانی گۆرانی بە ڕیپلەی
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful group assistant. "
@@ -183,12 +182,11 @@ async def handle_group_messages(client: Client, message: Message):
     text_content = message.text.strip()
     lower_text = text_content.lower()
 
-    # 4) ئەگەر ڕیپلەی وشەی (پخش، پلەی، play, پشک ڤیدیو، هتد) کرابێت بۆ لێدانی گۆرانی
+    # 4) ئەگەر ڕیپلەی وشەی (پخش، پلەی، play) کرابێت بۆ لێدانی گۆرانی
     if any(word in lower_text for word in ["پخش", "پلەی", "play", "لێبدە", "آهنگ"]):
-        # دەتوانین دەستەواژەی پخش/پلەی لابەین و ئەوەی ماوە بەدوایدا بگەڕێین یان خودی ناوەکە بەکاربهێنین
-        query = re.sub(r'^(پخش|پلەی|play|لێبدە|آهنگ)\s*', '', text_content, flags=IGNORECASE:=re.IGNORECASE).strip()
+        query = re.sub(r'^(پخش|پلەی|play|لێبدە|آهنگ)\s*', '', text_content, flags=re.IGNORECASE).strip()
         if not query:
-            query = text_content # ئەگەر تەنها ناوی گۆرانییەکە بوو
+            query = text_content
 
         status = await message.reply_text("🎵 گۆرانیەکە داگردەکرێت و دەچێتە ڤۆیس کڵاس... / در حال پخش...")
         try:
@@ -199,7 +197,7 @@ async def handle_group_messages(client: Client, message: Message):
             await status.edit_text(f"نەتوانرا لە ڤۆیس کڵاس لێبدرێت: {e}")
         return
 
-    # 2 & 3) گفتوگۆ و وەڵامدانەوەی زیرەک بە زمانە جیاوازەکان کاتێک ڕیپلەی بۆت دەکەیت
+    # 2 & 3) گفتوگۆ و وەڵامدانەوەی زیرەک بە زمانە جیاوازەکان
     thinking = await message.reply_text("...")
     try:
         answer = await asyncio.to_thread(ask_ai, text_content)
