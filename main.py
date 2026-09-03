@@ -5,22 +5,21 @@ import asyncio
 import logging
 
 import requests
-from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
 
 # ---------------------------------------------------------------
-# ڕێکخستنی سەرەکی لە ڕێگەی گۆڕاوەکانی ژینگە (Variables)
+# ڕێکخستنی سەرەکی و زانیارییە تایبەتەکان
 # ---------------------------------------------------------------
-load_dotenv()
+API_ID = 35712521
+API_HASH = "b0713b67f41a77cb3271d49f84705d08"
+BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-API_ID = int(os.getenv("API_ID", "0"))
-API_HASH = os.getenv("API_HASH", "")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# کلیلی جیمینای کە ناردیەت:
+GEMINI_API_KEY = "AQ.Ab8RN6J4GXGk9Wr22ChyuKmc1xxFXQoyLOpPmoIAHPHBsIhpSQ"
 
-NEW_MEMBER_WINDOW_SECONDS = int(os.getenv("NEW_MEMBER_WINDOW_SECONDS", "600"))
+NEW_MEMBER_WINDOW_SECONDS = 600
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ai-bot")
