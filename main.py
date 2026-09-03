@@ -23,7 +23,7 @@ async def text_to_voice(text, lang='ku'):
         print(f"هەڵە: {e}")
         return None
 
-# ====== فەرمانی /start ======
+# ====== فەرمانەکان ======
 @bot.on_message(filters.command("start"))
 async def start_command(client, message: Message):
     await message.reply(
@@ -34,12 +34,10 @@ async def start_command(client, message: Message):
         "/ping - تاقیکردنەوەی کارکردن"
     )
 
-# ====== فەرمانی /ping ======
 @bot.on_message(filters.command("ping"))
 async def ping_command(client, message: Message):
     await message.reply("🏓 پۆنگ! بۆت کاردەکات! ✅")
 
-# ====== فەرمانی /tts ======
 @bot.on_message(filters.command("tts"))
 async def tts_command(client, message: Message):
     text = message.text.replace("/tts", "").strip()
@@ -48,7 +46,6 @@ async def tts_command(client, message: Message):
         await message.reply("❌ تکایە دەقێک بنووسە! نموونە:\n`/tts سڵاو چۆنی`")
         return
     
-    # دەستنیشانکردنی زمان
     lang = 'ku'
     if 'فارسی' in text:
         lang = 'fa'
@@ -66,11 +63,10 @@ async def tts_command(client, message: Message):
         )
         os.remove(audio_file)
         await wait_msg.delete()
-        await message.reply(f"✅ دەق گۆڕدرا بۆ دەنگ! زمان: {'کوردی' if lang == 'ku' else 'فارسی'}")
+        await message.reply(f"✅ دەق گۆڕدرا بۆ دەنگ!")
     else:
         await message.reply("❌ هەڵە ڕوویدا! تکایە دووبارە هەوڵبدەرەوە.")
 
-# ====== وەرگرتنی گۆرانی ======
 @bot.on_message(filters.audio | filters.video | filters.document)
 async def audio_handler(client, message: Message):
     if message.audio:
@@ -80,7 +76,8 @@ async def audio_handler(client, message: Message):
 
 # ====== دەستپێکردن ======
 print("🚀 بۆت دەستپێدەکات...")
-print(f"🤖 ناوی بۆت: {BOT_TOKEN[:15]}...")
+print(f"🤖 API_ID: {API_ID}")
+print(f"🤖 BOT_TOKEN: {BOT_TOKEN[:10]}...")
 
 try:
     bot.run()
