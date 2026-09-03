@@ -139,9 +139,9 @@ def ask_ai(prompt: str) -> str:
     
     if api_key:
         try:
-            # گۆڕینی ناوی مۆدێل بۆ gemini-1.0-pro بۆ ئەوەی کێشەی 404 نەمێنێت
+            # بەکارهێنانی v1 و gemini-1.5-flash بۆ ڕێگریکردن لە هەڵەی 404
             resp = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}",
                 json={
                     "contents": [{"parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]}],
                 },
