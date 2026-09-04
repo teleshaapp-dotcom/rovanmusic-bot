@@ -1,5 +1,3 @@
 pyrogram
 tgcrypto
-python-dotenv
 requests
-py-tgcalls
