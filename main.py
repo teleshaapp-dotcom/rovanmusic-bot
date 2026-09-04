@@ -4,7 +4,7 @@ import time
 import asyncio
 import logging
 
-import google.generativeai as genai
+import requests
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
@@ -17,11 +17,8 @@ API_ID = 35712521
 API_HASH = "b0713b67f41a77cb3271d49f84705d08"
 BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-GEMINI_API_KEY = "AQ.Ab8RN6Lu2yAuPJUHGaDw21OVzr_asMjkEalxb9kKpFDFqo0Yxg"
-
-# ڕێکخستنی کلیل بۆ کتێبخانەی فەرمی گووگڵ
-genai.configure(api_key=GEMINI_API_KEY)
-ai_model = genai.GenerativeModel("gemini-1.5-flash")
+# کلیلی ڕاستەقینەی جیمینای
+GEMINI_API_KEY = "AQ.Ab8RN6J8JKVgChkico-Z-JWlLcIgbrjZmXISlv7SyjaasxKKCA"
 
 NEW_MEMBER_WINDOW_SECONDS = 600
 
@@ -114,7 +111,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی AI بە کاتەگۆری فەرمی گووگڵ
+# 3) وەڵامدانەوەی AI باوەڕپێکراو بە بەکارهێنانی Bearer Token
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -123,10 +120,26 @@ SYSTEM_PROMPT = (
 )
 
 def ask_ai(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        return "کلیلی AI ڕێکنەخراوە."
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
-        response = ai_model.generate_content(full_prompt)
-        return response.text
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        headers = {
+            "Authorization": f"Bearer {GEMINI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "contents": [{
+                "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]
+            }]
+        }
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code != 200:
+            return f"هەڵەی API (کۆد: {response.status_code}): {response.text[:150]}"
+            
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         return f"هەڵەی پەیوەندی: {e}"
 
