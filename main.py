@@ -24,7 +24,8 @@ NEW_MEMBER_WINDOW_SECONDS = 600
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ai-bot")
 
-app = Client("ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# گۆڕینی ناوی سێشن بۆ دوورکەوتنەوە لە کێشەی FloodWait
+app = Client("rovan_ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 new_members: dict[int, dict[int, float]] = {}
 
@@ -110,7 +111,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3) وەڵامدانەوەی AI (لە چاتی تایبەتی و لە گروپ بە ڕیپلەی بۆت یان تگ)
+# 2 & 3) وەڵامدانەوەی AI (لە چاتی تایبەتی و لە گروپ)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -155,7 +156,6 @@ async def handle_ai_messages(client: Client, message: Message):
     
     is_mentioned = f"@{me.username}" in (message.text or "")
 
-    # ئەگەر لە گروپدا بوو، دەبێت یان ڕیپلەی بۆتەکە کرابێت یان ناوی بۆتەکە (تگ) درابێت. لە چاتی تایبەتی ڕاستەوخۆ وەڵام دەداتەوە.
     if not is_private and not is_reply_to_bot and not is_mentioned:
         return
 
