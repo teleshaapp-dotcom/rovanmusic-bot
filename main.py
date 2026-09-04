@@ -4,7 +4,7 @@ import time
 import asyncio
 import logging
 
-import requests
+import google.generativeai as genai
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
@@ -18,6 +18,10 @@ API_HASH = "b0713b67f41a77cb3271d49f84705d08"
 BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
 GEMINI_API_KEY = "AQ.Ab8RN6J8JKVgChkico-Z-JWlLcIgbrjZmXISlv7SyjaasxKKCA"
+
+# ڕێکخستنی کلیلی جیمینای بە کتێبخانەی فەرمی
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 NEW_MEMBER_WINDOW_SECONDS = 600
 
@@ -110,7 +114,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی AI بە بەکارهێنانی Query Parameter بۆ کلیلە نوێیەکان
+# 3) وەڵامدانەوەی AI بە کتێبخانەی فەرمی Google Generative AI
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -119,28 +123,12 @@ SYSTEM_PROMPT = (
 )
 
 def ask_ai(prompt: str) -> str:
-    if not GEMINI_API_KEY:
-        return "کلیلی AI ڕێکنەخراوە."
     try:
-        # گەڕانەوە بۆ بەکارهێنانی کلیل لە URLـدا وەک Parameter (بۆ کلیدە نوێیەکانی AQ)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-        headers = {
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "contents": [{
-                "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]
-            }]
-        }
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        
-        if response.status_code != 200:
-            return f"هەڵەی API (کۆد: {response.status_code}): {response.text[:150]}"
-            
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
+        response = model.generate_content(full_prompt)
+        return response.text
     except Exception as e:
-        return f"هەڵەی پەیوەندی: {e}"
+        return f"هەڵەی پەیوەندی بە AI: {e}"
 
 
 @app.on_message((filters.private | filters.group) & filters.text & ~filters.command("start"), group=2)
