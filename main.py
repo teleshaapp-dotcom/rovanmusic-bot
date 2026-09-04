@@ -24,7 +24,6 @@ NEW_MEMBER_WINDOW_SECONDS = 600
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ai-bot")
 
-# گۆڕینی ناوی سێشن بۆ دوورکەوتنەوە لە کێشەی FloodWait
 app = Client("rovan_ai_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 new_members: dict[int, dict[int, float]] = {}
@@ -35,7 +34,7 @@ LINK_REGEX = re.compile(
 
 
 # ---------------------------------------------------------------
-# 1 & 7) بەخێرهاتنی خەڵک و سڕینەوەی پاشماوەکەی
+# 1) بەخێرهاتنی ئەندامی نوێ و سڕینەوەی پاشماوەکەی
 # ---------------------------------------------------------------
 @app.on_chat_member_updated()
 async def welcome_new_member(client: Client, update: ChatMemberUpdated):
@@ -73,7 +72,7 @@ async def delete_welcome_later(msg: Message):
 
 
 # ---------------------------------------------------------------
-# 5 & 6) سڕینەوەی نامە و سڕینەوەی لینک بۆ ئەندامانی نوێ لە گروپ
+# 2) سڕینەوەی لینک بۆ ئەندامانی نوێ لە گروپ
 # ---------------------------------------------------------------
 @app.on_message(filters.group & ~filters.service, group=1)
 async def delete_links_from_new_members(client: Client, message: Message):
@@ -111,7 +110,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 2 & 3) وەڵامدانەوەی AI (لە چاتی تایبەتی و لە گروپ)
+# 3) وەڵامدانەوەی AI (لە چاتی تایبەتی و گروپ)
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -133,11 +132,8 @@ def ask_ai(prompt: str) -> str:
         response.raise_for_status()
         data = response.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
-    except requests.exceptions.HTTPError as e:
-        status_code = e.response.status_code if e.response else "نادیار"
-        return f"هەڵەی پەیوەندی بە جیمینای (کۆد: {status_code})."
-    except Exception as e:
-        return f"هەڵەیەک ڕوویدا لە وەرگرتنی وەڵام."
+    except Exception:
+        return "هەڵەیەک لە پەیوەندی بە جیمینای ڕوویدا."
 
 
 @app.on_message((filters.private | filters.group) & filters.text & ~filters.command("start"), group=2)
@@ -170,9 +166,9 @@ async def handle_ai_messages(client: Client, message: Message):
             await thinking.edit_text(answer[:4000])
         except MessageNotModified:
             pass
-    except Exception as e:
+    except Exception:
         try:
-            await thinking.edit_text(f"هەڵەیەک ڕوویدا: هەوڵ بدە.")
+            await thinking.edit_text("هەڵەیەک ڕوویدا.")
         except MessageNotModified:
             pass
 
