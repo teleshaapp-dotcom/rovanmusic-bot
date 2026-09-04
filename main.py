@@ -17,7 +17,6 @@ API_ID = 35712521
 API_HASH = "b0713b67f41a77cb3271d49f84705d08"
 BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-# کلیلی ڕاستەقینەی جیمینای
 GEMINI_API_KEY = "AQ.Ab8RN6J8JKVgChkico-Z-JWlLcIgbrjZmXISlv7SyjaasxKKCA"
 
 NEW_MEMBER_WINDOW_SECONDS = 600
@@ -111,7 +110,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی AI باوەڕپێکراو بە بەکارهێنانی Bearer Token
+# 3) وەڵامدانەوەی AI بە بەکارهێنانی Query Parameter بۆ کلیلە نوێیەکان
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -123,9 +122,9 @@ def ask_ai(prompt: str) -> str:
     if not GEMINI_API_KEY:
         return "کلیلی AI ڕێکنەخراوە."
     try:
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        # گەڕانەوە بۆ بەکارهێنانی کلیل لە URLـدا وەک Parameter (بۆ کلیدە نوێیەکانی AQ)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
         headers = {
-            "Authorization": f"Bearer {GEMINI_API_KEY}",
             "Content-Type": "application/json"
         }
         payload = {
