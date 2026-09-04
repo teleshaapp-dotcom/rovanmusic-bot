@@ -4,7 +4,7 @@ import time
 import asyncio
 import logging
 
-import google.generativeai as genai
+import requests
 from pyrogram import Client, filters
 from pyrogram.types import ChatMemberUpdated, Message
 from pyrogram.enums import ChatMemberStatus
@@ -17,11 +17,8 @@ API_ID = 35712521
 API_HASH = "b0713b67f41a77cb3271d49f84705d08"
 BOT_TOKEN = "8881339041:AAFBpUgTW3f2YD6NvgxIDycDsC11P8Lbb3E"
 
-GEMINI_API_KEY = "AQ.Ab8RN6J8JKVgChkico-Z-JWlLcIgbrjZmXISlv7SyjaasxKKCA"
-
-# ڕێکخستنی کلیلی جیمینای بە کتێبخانەی فەرمی
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+# کلیلی نوێی AQ
+GEMINI_API_KEY = "AQ.Ab8RN6LQuebPYZu7_m57FEjkJSOIZfb4JH0gO1aCjfeB9ngVLg"
 
 NEW_MEMBER_WINDOW_SECONDS = 600
 
@@ -114,7 +111,7 @@ async def delete_links_from_new_members(client: Client, message: Message):
 
 
 # ---------------------------------------------------------------
-# 3) وەڵامدانەوەی AI بە کتێبخانەی فەرمی Google Generative AI
+# 3) وەڵامدانەوەی AI بە هێدەری فەرمی X-goog-api-key
 # ---------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a helpful assistant. "
@@ -123,12 +120,29 @@ SYSTEM_PROMPT = (
 )
 
 def ask_ai(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        return "کلیلی AI ڕێکنەخراوە."
     try:
-        full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
-        response = model.generate_content(full_prompt)
-        return response.text
+        # بەکارهێنانی مۆدێلی گونجاو و هێدەری تایبەتی X-goog-api-key
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": GEMINI_API_KEY
+        }
+        payload = {
+            "contents": [{
+                "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]
+            }]
+        }
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code != 200:
+            return f"هەڵەی API (کۆد: {response.status_code}): {response.text[:150]}"
+            
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        return f"هەڵەی پەیوەندی بە AI: {e}"
+        return f"هەڵەی پەیوەندی: {e}"
 
 
 @app.on_message((filters.private | filters.group) & filters.text & ~filters.command("start"), group=2)
