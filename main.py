@@ -122,18 +122,23 @@ def ask_ai(prompt: str) -> str:
     if not GEMINI_API_KEY:
         return "کلیلی AI ڕێکنەخراوە."
     try:
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        # بەکارهێنانی مۆدێلی سەردەمیانە و جێگیر
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
         payload = {
             "contents": [{
                 "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser: {prompt}"}]
             }]
         }
         response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
+        
+        # ئەگەر هەڵەی سێرڤەر هەبوو، وردەکارییەکەی بخوەینەوە
+        if response.status_code != 200:
+            return f"هەڵەی API (کۆد: {response.status_code}): {response.text[:100]}"
+            
         data = response.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception:
-        return "هەڵەیەک لە پەیوەندی بە جیمینای ڕوویدا."
+    except Exception as e:
+        return f"هەڵەی پەیوەندی: {e}"
 
 
 @app.on_message((filters.private | filters.group) & filters.text & ~filters.command("start"), group=2)
@@ -166,9 +171,9 @@ async def handle_ai_messages(client: Client, message: Message):
             await thinking.edit_text(answer[:4000])
         except MessageNotModified:
             pass
-    except Exception:
+    except Exception as e:
         try:
-            await thinking.edit_text("هەڵەیەک ڕوویدا.")
+            await thinking.edit_text(f"هەڵە: {e}")
         except MessageNotModified:
             pass
 
